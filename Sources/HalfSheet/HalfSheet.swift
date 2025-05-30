@@ -67,10 +67,14 @@ public enum CloseType {
     case closeButton
 }
 
-struct HalfSheet<Content: View, Parent: View, Item: Identifiable & Equatable>: View {
+struct HalfSheet<Content: View, Scrim: ShapeStyle, Background: ShapeStyle, Parent: View, Item: Identifiable & Equatable>: View {
 
+    var scrim: Scrim
+    var background: Background
     var parent: Parent
     var content: (Item) -> Content
+
+    @Environment(\.backgroundMaterial) var backgroundMaterial
 
     @State private var presentationMode = HalfSheetPresentationMode(isPresented: true, isDismissing: false)
     private var dismiss: HalfSheetDismissAction
@@ -83,16 +87,20 @@ struct HalfSheet<Content: View, Parent: View, Item: Identifiable & Equatable>: V
 
     @GestureState private var dragState: DragState = .inactive
 
-    public init(_ parent: Parent,
-                item: Binding<Item?>,
-                closeType: CloseType = .dragBar,
-                onDismiss: (() -> Void)? = nil,
-                @ViewBuilder content: @escaping (Item) -> Content) {
+    init(_ parent: Parent,
+         item: Binding<Item?>,
+         closeType: CloseType,
+         scrim: Scrim,
+         background: Background,
+         onDismiss: (() -> Void)?,
+         @ViewBuilder content: @escaping (Item) -> Content) {
         self._item = item
         self.closeType = closeType
         self.onDismiss = onDismiss
         self.parent = parent
         self.content = content
+        self.scrim = scrim
+        self.background = background
 
         self.dismiss = HalfSheetDismissAction(dismiss: {
             item.wrappedValue = nil
@@ -112,13 +120,16 @@ struct HalfSheet<Content: View, Parent: View, Item: Identifiable & Equatable>: V
             GeometryReader { proxy in
                 ZStack(alignment: .bottom) {
                     if hasItem {
-                        Color.black.opacity(0.25)
+                        Rectangle()
+                            .foregroundStyle(scrim)
+                            .transition(.opacity)
                             .transition(.opacity)
                             .onTapGesture(perform: close)
+
                         VStack(spacing: -1) {
                             ZStack(alignment: .top) {
                                 RoundedRectangle(cornerRadius: HalfSheetLayoutConstants.cornerRadius)
-                                    .foregroundStyle(.background)
+                                    .foregroundStyle(background)
 
                                 VStack(spacing: 0) {
                                     Group {
@@ -210,26 +221,32 @@ private final class IdentifiableObject: Identifiable, Equatable, Sendable {
 }
 
 extension View {
-    public func halfSheet<Content>(isPresented: Binding<Bool>,
-                                   closeType: CloseType = .dragBar,
-                                   onDismiss: (() -> Void)? = nil,
-                                   @ViewBuilder content: @escaping () -> Content) -> some View where Content: View {
-        let identifiable = IdentifiableObject()
-        let item = Binding<IdentifiableObject?>(get: { () -> IdentifiableObject? in
-            return isPresented.wrappedValue ? identifiable : nil
-        }, set: { newValue in
-            isPresented.wrappedValue = newValue != nil
-        })
+    public func halfSheet<Content: View, Scrim: ShapeStyle, Background: ShapeStyle>(
+        isPresented: Binding<Bool>,
+        closeType: CloseType = .dragBar,
+        scrim: Scrim = Color.black.opacity(0.25),
+        background: Background = .background,
+        onDismiss: (() -> Void)? = nil,
+        @ViewBuilder content: @escaping () -> Content) -> some View {
+            let identifiable = IdentifiableObject()
+            let item = Binding<IdentifiableObject?> { () -> IdentifiableObject? in
+                return isPresented.wrappedValue ? identifiable : nil
+            } set: { newValue in
+                isPresented.wrappedValue = newValue != nil
+            }
 
-        return HalfSheet(self, item: item, closeType: closeType, onDismiss: onDismiss, content: { _ in content() })
-    }
+            return HalfSheet(self, item: item, closeType: closeType, scrim: scrim, background: background, onDismiss: onDismiss, content: { _ in content() })
+        }
 
-    public func halfSheet<Content, Item>(item: Binding<Item?>,
-                                        closeType: CloseType = .dragBar,
-                                        onDismiss: (() -> Void)? = nil,
-                                        @ViewBuilder content: @escaping (Item) -> Content) -> some View where Content: View, Item: Identifiable & Equatable {
-        return HalfSheet(self, item: item, closeType: closeType, onDismiss: onDismiss, content: content)
-    }
+    public func halfSheet<Content: View, Item: Identifiable & Equatable, Scrim: ShapeStyle, Background: ShapeStyle>(
+        item: Binding<Item?>,
+        closeType: CloseType = .dragBar,
+        scrim: Scrim = Color.black.opacity(0.25),
+        background: Background = .background,
+        onDismiss: (() -> Void)? = nil,
+        @ViewBuilder content: @escaping (Item) -> Content) -> some View {
+            return HalfSheet(self, item: item, closeType: closeType, scrim: scrim, background: background, onDismiss: onDismiss, content: content)
+        }
 }
 
 #if DEBUG
