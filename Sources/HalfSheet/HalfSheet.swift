@@ -154,7 +154,7 @@ struct HalfSheet<Content: View, Scrim: ShapeStyle, Background: ShapeStyle, Paren
                                         case .dragBar:
                                             Capsule(style: .circular)
                                                 .frame(width: 50, height: 6)
-                                                .foregroundColor(Color.gray.opacity(0.5))
+                                                .foregroundStyle(.tertiary)
                                                 .padding(.top, 10)
                                                 .opacity(interactiveDismissDisabled ? 0.5 : 1)
                                         case .none:
@@ -276,7 +276,7 @@ extension ButtonStyle where Self == AppleButtonStyle {
     @Previewable @State var isPresented: Bool = true
     Color.blue
         .ignoresSafeArea()
-        .halfSheet(isPresented: $isPresented, closeType: .closeButton) {
+        .halfSheet(isPresented: $isPresented) {
             VStack(spacing: 35) {
                 VStack(spacing: 10) {
                     Text("Hold Near Phone")
